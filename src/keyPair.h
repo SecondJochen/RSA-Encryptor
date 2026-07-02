@@ -17,14 +17,14 @@ struct PublicKey {
     operations::Base256 n;
     operations::Base256 e;
 
-    [[nodiscard]] std::vector<uint8_t> serialize() const;
+    [[nodiscard]] ByteArray serialize() const;
 };
 
 struct PrivateKey {
     operations::Base256 n;
     operations::Base256 d;
 
-    [[nodiscard]] std::vector<uint8_t> serialize() const;
+    [[nodiscard]] ByteArray serialize() const;
 };
 
 class keyPair {
@@ -44,15 +44,15 @@ class keyPair {
     PublicKey getPublicKey() { return public_key; }
     PrivateKey getPrivateKey() { return private_key; }
 
-    static std::vector<uint8_t> s_serialize(const operations::Base256 &first,
+    static ByteArray s_serialize(const operations::Base256 &first,
                                         const operations::Base256 &second);
-    static bool s_deserialize(const std::vector<uint8_t>
+    static bool s_deserialize(const ByteArray
         &data, operations::Base256 &outFirst,
                               operations::Base256 &outSecond);
 
     // Base64 helper functions
-    static std::string base64Encode(const std::vector<uint8_t> &data);
-    static std::vector<uint8_t> base64Decode(std::string data);
+    static std::string base64Encode(const ByteArray &data);
+    static ByteArray base64Decode(std::string data);
     static uint8_t getBase64Index(char letter);
 };
 

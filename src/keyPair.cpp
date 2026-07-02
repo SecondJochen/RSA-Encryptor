@@ -16,50 +16,42 @@
 
 
 namespace {
-    // 256 bytes = 2048 bits for prime p and q.
-    // Resulting in a 4096-bit RSA modulus n = p * q.
-    constexpr size_t PRIME_SIZE_BYTES = 256;
+    constexpr size_t PRIME_SIZE_WORDS = 32;
 
-    // Reads cryptographically secure random bytes from the operating system
-    std::vector<uint8_t> getSecureRandomBytes(size_t size) {
-        std::vector<uint8_t> buffer(size);
+    ByteArray getSecureRandomBytes(size_t word_count) {
+        ByteArray buffer(word_count);
+        size_t byte_size = word_count * sizeof(uint64_t); // 32 * 8 = 256 Bytes
+
     #if defined(_WIN32)
-        // Windows BCrypt API
-        BCryptGenRandom(nullptr, buffer.data(), static_cast<ULONG>(size), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+        BCryptGenRandom(nullptr, buffer.data(), static_cast<ULONG>(byte_size), BCRYPT_USE_SYSTEM_PREFERRED_RNG);
     #else
-        // Linux/macOS: getentropy() with /dev/urandom as a fallback
         #if defined(__GLIBC__) && ((__GLIBC__ > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 25))
-        if (getentropy(buffer.data(), size) == 0) {
+        if (getentropy(buffer.data(), byte_size) == 0) {
             return buffer;
         }
         #endif
         std::ifstream urandom("/dev/urandom", std::ios::binary);
         if (urandom.is_open()) {
-            urandom.read(reinterpret_cast<char*>(buffer.data()), size);
+            urandom.read(reinterpret_cast<char*>(buffer.data()), byte_size);
         }
     #endif
         return buffer;
     }
 
-    // Generates a random odd candidate with the most significant bit set
-    std::vector<uint8_t> generateCandidateBytes() {
-        std::vector<uint8_t> candidate = getSecureRandomBytes(PRIME_SIZE_BYTES);
+    ByteArray generateCandidateBytes() {
+        ByteArray candidate = getSecureRandomBytes(PRIME_SIZE_WORDS);
 
-        // Ensure the most significant bit (MSB) is set (little endian)
-        candidate[PRIME_SIZE_BYTES - 1] |= 0x80;
+        candidate[PRIME_SIZE_WORDS - 1] |= 0x8000'0000'0000'0000ULL;
 
-        // Ensure the number is odd (least significant bit = 1)
         candidate[0] |= 0x01;
 
         return candidate;
     }
 
-    // Generates a cryptographically secure 2048-bit prime number
     operations::Base256 generateSecurePrime() {
-        std::vector<uint8_t> candidateBytes = generateCandidateBytes();
+        ByteArray candidateBytes = generateCandidateBytes();
         operations::Base256 candidate(candidateBytes);
 
-        // Search sequentially for the next prime using the math_utils library
         while (!operations::math::isPrime(candidate)) {
             candidate += operations::Base256(2);
         }
@@ -101,25 +93,25 @@ keyPair::keyPair() {
 
 // Import Constructor: Imports keys from Base64 encoded serialized strings
 keyPair::keyPair(const std::string& publicKey, const std::string& privateKey) {
-    const std::vector<uint8_t> pubBytes = base64Decode(publicKey);
+    const ByteArray pubBytes = base64Decode(publicKey);
     s_deserialize(pubBytes, public_key.n, public_key.e);
 
-    const std::vector<uint8_t> privBytes = base64Decode(privateKey);
+    const ByteArray privBytes = base64Decode(privateKey);
     s_deserialize(privBytes, private_key.n, private_key.d);
 }
 
-std::vector<uint8_t> PublicKey::serialize() const {
+ByteArray PublicKey::serialize() const {
     return keyPair::s_serialize(n, e);
 }
 
-std::vector<uint8_t> PrivateKey::serialize() const {
+ByteArray PrivateKey::serialize() const {
     return keyPair::s_serialize(n, d);
 }
 
 // Serializes two 4 bytes Byte Arrays with Big endian
-std::vector<uint8_t> keyPair::s_serialize(const operations::Base256 &first,
+ByteArray keyPair::s_serialize(const operations::Base256 &first,
                                           const operations::Base256 &second) {
-    std::vector<uint8_t> serialized;
+    ByteArray serialized;
     const auto &firstBytes = first.getBytes();
     const auto &secondBytes = second.getBytes();
 
@@ -144,7 +136,7 @@ std::vector<uint8_t> keyPair::s_serialize(const operations::Base256 &first,
 }
 
 // Deserializes two 4 bytes Byte Arrays with Big endian
-bool keyPair::s_deserialize(const std::vector<uint8_t> &data, operations::Base256 &outFirst,
+bool keyPair::s_deserialize(const ByteArray &data, operations::Base256 &outFirst,
                             operations::Base256 &outSecond) {
     if (data.size() < 8) return false;
 
@@ -156,10 +148,10 @@ bool keyPair::s_deserialize(const std::vector<uint8_t> &data, operations::Base25
 
     if (index + firstSize > data.size()) return false;
     const auto firstBegin =
-        data.begin() + static_cast<std::vector<uint8_t>::difference_type>(index);
+        data.begin() + static_cast<ByteArray::difference_type>(index);
     const auto firstEnd =
-        firstBegin + static_cast<std::vector<uint8_t>::difference_type>(firstSize);
-    std::vector<uint8_t> firstBytes(firstBegin, firstEnd);
+        firstBegin + static_cast<ByteArray::difference_type>(firstSize);
+    ByteArray firstBytes(firstBegin, firstEnd);
     index += firstSize;
 
     if (index + 4 > data.size()) return false;
@@ -170,10 +162,10 @@ bool keyPair::s_deserialize(const std::vector<uint8_t> &data, operations::Base25
 
     if (index + secondSize > data.size()) return false;
     const auto secondBegin =
-        data.begin() + static_cast<std::vector<uint8_t>::difference_type>(index);
+        data.begin() + static_cast<ByteArray::difference_type>(index);
     const auto secondEnd =
-        secondBegin + static_cast<std::vector<uint8_t>::difference_type>(secondSize);
-    std::vector<uint8_t> secondBytes(secondBegin, secondEnd);
+        secondBegin + static_cast<ByteArray::difference_type>(secondSize);
+    ByteArray secondBytes(secondBegin, secondEnd);
 
     outFirst = operations::Base256(firstBytes);
     outSecond = operations::Base256(secondBytes);
@@ -181,8 +173,8 @@ bool keyPair::s_deserialize(const std::vector<uint8_t> &data, operations::Base25
     return true;
 }
 
-std::string keyPair::base64Encode(const std::vector<uint8_t> &data) {
-    std::vector<uint8_t> result;
+std::string keyPair::base64Encode(const ByteArray &data) {
+    ByteArray result;
     size_t index = 0;
 
     while (index < data.size()) {
@@ -206,8 +198,8 @@ std::string keyPair::base64Encode(const std::vector<uint8_t> &data) {
     return outString;
 }
 
-std::vector<uint8_t> keyPair::base64Decode(std::string data) {
-    std::vector<uint8_t> result;
+ByteArray keyPair::base64Decode(std::string data) {
+    ByteArray result;
 
     while (!data.empty()) {
         if (data.length() < 4) break;

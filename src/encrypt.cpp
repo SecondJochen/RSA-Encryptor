@@ -4,8 +4,8 @@
 using namespace operations::math;
 
 namespace core::encryptor {
-std::vector<uint8_t> encrypt(keyPair& keyPair, const std::string& plaintext)  {
-    std::vector<uint8_t> ciphertext;
+ByteArray encrypt(keyPair& keyPair, const std::string& plaintext)  {
+    ByteArray ciphertext;
 
     // The ciphertext block size is determined by the byte-length of the modulus n
     const size_t blockSize = keyPair.getPrivateKey().n.getBytes().size();
@@ -19,7 +19,7 @@ std::vector<uint8_t> encrypt(keyPair& keyPair, const std::string& plaintext)  {
         operations::Base256 c_num = modPow(m, keyPair.getPublicKey().e, keyPair.getPublicKey().n);
 
         // 3. Extract the raw bytes from the computed ciphertext number
-        std::vector<uint8_t> c_bytes = c_num.getBytes();
+        ByteArray c_bytes = c_num.getBytes();
 
         // 4. Padding: Pad the byte vector with trailing zeros up to the required block size.
         while (c_bytes.size() < blockSize) {

@@ -6,7 +6,7 @@
 using namespace operations::math;
 
 namespace core::decryptor {
-std::string decrypt(keyPair& keyPair, const std::vector<uint8_t>& ciphertext)  {
+std::string decrypt(keyPair& keyPair, const ByteArray& ciphertext)  {
     std::string plaintext;
 
     const size_t blockSize = keyPair.getPrivateKey().n.getBytes().size();

@@ -15,7 +15,7 @@ TEST_CASE("RSA Core: Basic Encryption and Decryption Roundtrip") {
     SECTION("Decrypting encrypted normal string recovers the original text") {
         std::string plaintext = "Hello, C++ World!";
 
-        std::vector<uint8_t> ciphertext = encrypt(pair, plaintext);
+        ByteArray ciphertext = encrypt(pair, plaintext);
 
         REQUIRE_FALSE(ciphertext.empty());
 
@@ -27,7 +27,7 @@ TEST_CASE("RSA Core: Basic Encryption and Decryption Roundtrip") {
     SECTION("Decrypting encrypted empty string recovers empty string") {
         std::string plaintext = "";
 
-        std::vector<uint8_t> ciphertext = encrypt(pair, plaintext);
+        ByteArray ciphertext = encrypt(pair, plaintext);
         std::string recovered = decrypt(pair, ciphertext);
 
         REQUIRE(recovered == plaintext);
@@ -36,7 +36,7 @@ TEST_CASE("RSA Core: Basic Encryption and Decryption Roundtrip") {
     SECTION("Correct handling of spaces, numbers, and special symbols") {
         std::string plaintext = "RSA_4096_Test! @#$%^&*()_+ 12345";
 
-        std::vector<uint8_t> ciphertext = encrypt(pair, plaintext);
+        ByteArray ciphertext = encrypt(pair, plaintext);
         std::string recovered = decrypt(pair, ciphertext);
 
         REQUIRE(recovered == plaintext);
@@ -49,7 +49,7 @@ TEST_CASE("RSA Core: Security and Key Isolation") {
 
     std::string plaintext = "Highly Confidential Cryptographic Data";
 
-    std::vector<uint8_t> ciphertext = encrypt(pairA, plaintext);
+    ByteArray ciphertext = encrypt(pairA, plaintext);
 
     SECTION("Decrypting with the incorrect keypair must not recover the plaintext") {
         std::string recovered = decrypt(pairB, ciphertext);
@@ -70,7 +70,7 @@ TEST_CASE("RSA Core: Key Serialization and Base64 Import/Export") {
     keyPair importedPair(pubBase64, privBase64);
 
     std::string plaintext = "Verification of Imported Keys";
-    std::vector<uint8_t> ciphertext = encrypt(importedPair, plaintext);
+    ByteArray ciphertext = encrypt(importedPair, plaintext);
     std::string recovered = decrypt(importedPair, ciphertext);
 
     REQUIRE(recovered == plaintext);
