@@ -91,7 +91,7 @@ keyPair::keyPair() {
     private_key.d = d;
 }
 
-// Import Constructor: Imports keys from Base64 encoded serialized strings
+// Imports keys from Base64 encoded serialized strings
 keyPair::keyPair(const std::string& publicKey, const std::string& privateKey) {
     const ByteArray pubBytes = base64Decode(publicKey);
     s_deserialize(pubBytes, public_key.n, public_key.e);
